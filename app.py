@@ -1,62 +1,99 @@
-# streamlit_student_prediction.py
 import streamlit as st
 import pandas as pd
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-import numpy as np
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import ColumnTransformer
 
-st.title("Student Marks/CGPA Prediction System")
-
-# 1. CSV upload or manual input
-uploaded_file = st.file_uploader("Upload Student CSV", type="csv")
-
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-else:
-    st.write("Enter student details manually:")
-    name = st.text_input("Name")
-    roll = st.text_input("Roll Number")
-    course = st.selectbox("Course", ["B.Tech", "BBA", "BCA", "Medical", "Other"])
-    cgpa = st.number_input("Semester Avg CGPA", min_value=0.0, max_value=10.0, step=0.1)
-    study_hours = st.number_input("Study Hours per week", min_value=0)
-    attendance = st.number_input("Attendance %", min_value=0, max_value=100)
-    assignments = st.number_input("Assignments Completed", min_value=0)
-    extra = st.number_input("Extra Activities", min_value=0)
-
-    df = pd.DataFrame({
-        "Name": [name],
-        "RollNumber": [roll],
-        "Course": [course],
-        "SemesterAvgCGPA": [cgpa],
-        "StudyHours": [study_hours],
-        "AttendancePercentage": [attendance],
-        "AssignmentsCompleted": [assignments],
-        "ExtraActivities": [extra]
-    })
-
-# 2. Encode Course for model
-df_encoded = df.copy()
-df_encoded["Course"] = df_encoded["Course"].map({
-    "B.Tech":1, "BBA":2, "BCA":3, "Medical":4, "Other":5
-})
-
-# 3. Dummy model for prediction (Linear Regression)
-# y = SemesterAvgCGPA + 0.05*StudyHours + 0.03*Attendance + 0.02*Assignments + 0.01*ExtraActivities
-X = df_encoded[["SemesterAvgCGPA","StudyHours","AttendancePercentage","AssignmentsCompleted","ExtraActivities"]]
-y = df_encoded["SemesterAvgCGPA"] + 0.05*df_encoded["StudyHours"] + 0.03*df_encoded["AttendancePercentage"] + 0.02*df_encoded["AssignmentsCompleted"] + 0.01*df_encoded["ExtraActivities"]
-
-model = LinearRegression()
-model.fit(X, y)
-df["PredictedMarks"] = model.predict(X).round(2)
-
-# 4. Show top 10 students
-st.subheader("Top 10 Students")
-top_students = df.sort_values(by="PredictedMarks", ascending=False).head(10)
-st.dataframe(top_students[["Name","RollNumber","Course","PredictedMarks"]])
-
-# 5. Option to download CSV
-st.download_button(
-    label="Download CSV with Predictions",
-    data=top_students.to_csv(index=False),
-    file_name='top_students.csv',
-    mime='text/csv'
+# --- Page Configuration ---
+st.set_page_config(
+    page_title="Student Mark Predictor",
+    page_icon="🎓",
+    layout="wide"
 )
+
+# --- Load and Process Data ---
+@st.cache_data
+def load_data():
+    try:
+        df = pd.read_csv('student_data.csv')
+        return df
+    except FileNotFoundError:
+        st.error("Error: 'student_data.csv' not found. Please create the file as instructed.")
+        return None
+
+df = load_data()
+
+if df is not None:
+    # Preprocessing the data
+    # Select features (independent variables) and target (dependent variable)
+    features = ['Course', 'Semester Avg CGPA', 'Study Hours']
+    target = 'Final Marks'
+
+    X = df[features]
+    y = df[target]
+
+    # Use OneHotEncoder for the categorical 'Course' column
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('onehot', OneHotEncoder(), ['Course'])
+        ],
+        remainder='passthrough'
+    )
+
+    X_processed = preprocessor.fit_transform(X)
+
+    # Train the model
+    model = LinearRegression()
+    model.fit(X_processed, y)
+
+    # --- Streamlit Application Layout ---
+    st.title("🎓 Student Mark Prediction Project")
+    st.markdown("Enter student details to predict their marks and see the top performers.")
+    
+    st.markdown("---")
+
+    # --- Prediction Section ---
+    st.header("Predict a Student's Marks")
+    with st.form("prediction_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            name = st.text_input("Student Name")
+            roll_number = st.text_input("Roll Number")
+        
+        with col2:
+            course = st.selectbox(
+                "Select Course",
+                options=['B.Tech', 'BBA', 'BCA', 'Medical', 'Other']
+            )
+            semester_avg_cgpa = st.slider("Semester Avg CGPA", 0.0, 10.0, 7.5, 0.1)
+            study_hours = st.slider("Study Hours (per day)", 0, 10, 4)
+
+        submit_button = st.form_submit_button("Predict Marks")
+
+    if submit_button:
+        # Create a new data point for prediction
+        new_student_data = pd.DataFrame({
+            'Course': [course],
+            'Semester Avg CGPA': [semester_avg_cgpa],
+            'Study Hours': [study_hours]
+        })
+
+        # Preprocess the new data using the same preprocessor
+        new_student_processed = preprocessor.transform(new_student_data)
+
+        # Predict the marks
+        prediction = model.predict(new_student_processed)[0]
+
+        st.success(f"### Predicted Marks for {name}: **{prediction:.2f}**")
+
+    st.markdown("---")
+
+    # --- Top 10 Students Section ---
+    st.header("Top 10 Students (Based on Final Marks)")
+
+    # Sort the dataframe by 'Final Marks' in descending order and get the top 10
+    top_students = df.sort_values(by='Final Marks', ascending=False).head(10)
+
+    # Display the top students in a table
+    st.table(top_students[['Name', 'Roll Number', 'Course', 'Final Marks']].reset_index(drop=True))
