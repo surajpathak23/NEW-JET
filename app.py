@@ -1,100 +1,131 @@
 import streamlit as st
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.compose import ColumnTransformer
+from sklearn.model_selection import train_test_split
+import numpy as np
+import io
 
-# --- Page Configuration ---
+# --- Page Configuration and CSS ---
 st.set_page_config(
-    page_title="Student Mark Predictor",
+    page_title="Student CGPA Predictor",
     page_icon="🎓",
     layout="wide"
 )
 
-# --- Load and Process Data ---
-@st.cache_data
-def load_data():
-    try:
-        # Load the CSV file from the same directory as the script
-        df = pd.read_csv('student_data.csv')
-        return df
-    except FileNotFoundError:
-        st.error("Error: 'student_data.csv' not found. Please make sure the file is in the same folder as app.py.")
-        return None
+# Custom CSS for a better look
+st.markdown("""
+<style>
+.main-header {
+    font-size: 3em;
+    font-weight: bold;
+    color: #4CAF50;
+    text-align: center;
+    padding-bottom: 20px;
+}
+.sidebar .sidebar-content {
+    background-color: #f0f2f6;
+}
+.stForm {
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.st-emotion-cache-1cypcdp {
+    color: #008CBA;
+    font-weight: 600;
+}
+</style>
+""", unsafe_allow_html=True)
 
-df = load_data()
+# --- App Title ---
+st.markdown("<div class='main-header'>🎓 Student CGPA Predictor</div>", unsafe_allow_html=True)
+st.markdown("---")
+
+# --- Sidebar for File Upload ---
+with st.sidebar:
+    st.header("Upload Dataset")
+    uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+    st.info("Upload your student dataset here. The file should have 'Study Hours' and 'Final CGPA' columns.")
+
+# --- Main App Logic ---
+df = None
+if uploaded_file is not None:
+    try:
+        # Read the uploaded file
+        df = pd.read_csv(io.StringIO(uploaded_file.getvalue().decode('utf-8')))
+        
+        # Check for required columns
+        if 'Study Hours' not in df.columns or 'Final CGPA' not in df.columns:
+            st.error("Error: The uploaded CSV must contain 'Study Hours' and 'Final CGPA' columns.")
+            df = None
+    except Exception as e:
+        st.error(f"Error reading file: {e}")
+        df = None
 
 if df is not None:
-    # Preprocessing the data
-    features = ['Course', 'Semester Avg CGPA', 'Study Hours']
-    target = 'Final Marks'
+    # --- Data Preprocessing and Model Training ---
+    try:
+        # Select features and target
+        features = ['Study Hours']
+        target = 'Final CGPA'
+        
+        X = df[features]
+        y = df[target]
 
-    X = df[features]
-    y = df[target]
+        # Train a Linear Regression model
+        model = LinearRegression()
+        model.fit(X, y)
+        
+    except KeyError:
+        st.error("Missing required columns in the dataset. Please ensure it has 'Study Hours' and 'Final CGPA'.")
+        df = None
+        
+if df is not None:
+    # --- Prediction Section ---
+    st.header("Predict a New Student's CGPA")
+    with st.form("prediction_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            name = st.text_input("Student Name", placeholder="Enter student's full name")
+            roll_number = st.text_input("Roll Number", placeholder="Enter roll number")
+        
+        with col2:
+            study_hours = st.slider(
+                "Study Hours (per day)", 
+                min_value=0.0, 
+                max_value=12.0, 
+                value=5.0, 
+                step=0.1, 
+                help="Average hours a student studies per day."
+            )
+            average_cgpa_label = st.empty() # This is a dummy for alignment
+            
+        submit_button = st.form_submit_button("Predict CGPA")
 
-    # Use OneHotEncoder for the categorical 'Course' column
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('onehot', OneHotEncoder(), ['Course'])
-        ],
-        remainder='passthrough'
-    )
-
-    X_processed = preprocessor.fit_transform(X)
-
-    # Train the model
-    model = LinearRegression()
-    model.fit(X_processed, y)
-
-    # --- Streamlit Application Layout ---
-    st.title("🎓 Student Mark Prediction Project")
-    st.markdown("Enter student details to predict their marks and see the top performers.")
+    if submit_button:
+        # Predict the CGPA for the new student
+        new_student_data = pd.DataFrame({'Study Hours': [study_hours]})
+        prediction = model.predict(new_student_data)[0]
+        
+        # Clip prediction to a realistic range (e.g., 5.0 to 10.0)
+        final_prediction = np.clip(prediction, 5.0, 10.0)
+        
+        st.success(f"### Predicted CGPA for {name}: **{final_prediction:.2f}**")
 
     st.markdown("---")
 
     # --- Top 10 Students Section ---
-    st.header("Top 10 Students (Based on Final Marks)")
+    st.header("Top 10 Students (from Uploaded Data)")
 
-    # Sort the dataframe by 'Final Marks' in descending order and get the top 10
-    top_students = df.sort_values(by='Final Marks', ascending=False).head(10)
-
-    # Display the top students in a table
-    st.table(top_students[['Name', 'Roll Number', 'Course', 'Final Marks']].reset_index(drop=True))
-
-    
-    st.markdown("---")
-
-    # --- Prediction Section ---
-    st.header("Predict a Student's Marks")
-    with st.form("prediction_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            name = st.text_input("Student Name")
-            roll_number = st.text_input("Roll Number")
+    # Sort the dataframe by 'Final CGPA' in descending order and get the top 10
+    if 'Final CGPA' in df.columns:
+        top_students = df.sort_values(by='Final CGPA', ascending=False).head(10)
         
-        with col2:
-            course = st.selectbox(
-                "Select Course",
-                options=['B.Tech', 'BBA', 'BCA', 'Medical', 'Other']
-            )
-            semester_avg_cgpa = st.slider("Semester Avg CGPA", 0.0, 10.0, 7.5, 0.1)
-            study_hours = st.slider("Study Hours (per day)", 0, 10, 4)
+        # Display the top students in a table
+        st.table(top_students.reset_index(drop=True))
+    else:
+        st.warning("Cannot display top students. 'Final CGPA' column is missing in the uploaded file.")
 
-        submit_button = st.form_submit_button("Predict Marks")
-
-    if submit_button:
-        # Create a new data point for prediction
-        new_student_data = pd.DataFrame({
-            'Course': [course],
-            'Semester Avg CGPA': [semester_avg_cgpa],
-            'Study Hours': [study_hours]
-        })
-
-        # Preprocess the new data using the same preprocessor
-        new_student_processed = preprocessor.transform(new_student_data)
-
-        # Predict the marks
-        prediction = model.predict(new_student_processed)[0]
-
-        st.success(f"### Predicted Marks for {name}: **{prediction:.2f}**")
+else:
+    st.info("Please upload a CSV file from the sidebar to start the prediction.")
