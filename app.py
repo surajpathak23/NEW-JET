@@ -1,11 +1,8 @@
 import streamlit as st
 import pandas as pd
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, r2_score
 import numpy as np
 import io
-import plotly.express as px
 
 # --- Page Configuration and CSS ---
 st.set_page_config(
@@ -39,23 +36,22 @@ st.markdown("""
 
 # --- App Title ---
 st.markdown("<div class='main-header'>🎓 Student CGPA Predictor</div>", unsafe_allow_html=True)
+st.markdown("---")
 
-# --- Sidebar for File Upload & About ---
+# --- Sidebar for File Upload ---
 with st.sidebar:
     st.header("Upload Dataset")
     uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
     st.info("Upload your student dataset here. The file should have 'Study Hours', 'Previous CGPA', and 'Final CGPA' columns.")
-    
-    st.markdown("---")
-    st.header("About This Project")
-    st.write("This project uses a **Linear Regression** model to predict a student's final CGPA based on their study hours and previous semester's CGPA.")
-    st.write("The model learns from the uploaded dataset to provide accurate predictions.")
 
 # --- Main App Logic ---
 df = None
 if uploaded_file is not None:
     try:
+        # Read the uploaded file
         df = pd.read_csv(io.StringIO(uploaded_file.getvalue().decode('utf-8')))
+        
+        # Check for required columns
         required_cols = ['Study Hours', 'Previous CGPA', 'Final CGPA']
         if not all(col in df.columns for col in required_cols):
             st.error(f"Error: The uploaded CSV must contain the following columns: {', '.join(required_cols)}")
@@ -81,31 +77,28 @@ if df is not None:
     st.header("Top 10 Students (from Uploaded Data)")
 
     if 'Final CGPA' in df.columns:
+        # Sort the dataframe by 'Final CGPA' in descending order and get the top 10
         top_students = df.sort_values(by='Final CGPA', ascending=False).head(10)
+        
+        # Display the top students in a table
         st.table(top_students.reset_index(drop=True))
     else:
         st.warning("Cannot display top students. 'Final CGPA' column is missing in the uploaded file.")
 
     st.markdown("---")
-    
+
     # --- Data Preprocessing and Model Training ---
     try:
+        # Select features and target
         features = ['Study Hours', 'Previous CGPA']
         target = 'Final CGPA'
         
         X = df[features]
         y = df[target]
 
-        # Splitting data for validation
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
+        # Train a Linear Regression model
         model = LinearRegression()
-        model.fit(X_train, y_train)
-
-        # Evaluate model performance
-        y_pred = model.predict(X_test)
-        mae = mean_absolute_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
+        model.fit(X, y)
         
     except KeyError:
         st.error("Missing required columns for model training. Please check your dataset.")
@@ -141,31 +134,19 @@ if df is not None:
             submit_button = st.form_submit_button("Predict CGPA")
 
         if submit_button:
+            # Predict the CGPA for the new student
             new_student_data = pd.DataFrame({
                 'Study Hours': [study_hours],
                 'Previous CGPA': [previous_cgpa]
             })
             prediction = model.predict(new_student_data)[0]
+            
+            # Clip prediction to a realistic range (e.g., 5.0 to 10.0)
             final_prediction = np.clip(prediction, 5.0, 10.0)
+            
             st.success(f"### Predicted CGPA for {name}: **{final_prediction:.2f}**")
-
-    st.markdown("---")
-
-    # --- Model Performance & Visualization Section ---
-    st.header("Model Insights")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("Model Performance")
-        st.metric("Mean Absolute Error (MAE)", f"{mae:.2f}", help="Average difference between predicted and actual CGPA.")
-        st.metric("R-squared Score (R²)", f"{r2:.2f}", help="Indicates how well the model's predictions fit the data. A value closer to 1 is better.")
-    
-    with col2:
-        st.subheader("CGPA vs. Study Hours")
-        fig = px.scatter(df, x='Study Hours', y='Final CGPA',
-                         title='Relationship between Study Hours and CGPA',
-                         labels={'Study Hours': 'Study Hours (per day)', 'Final CGPA': 'Final CGPA'},
-                         hover_data=['Name', 'Previous CGPA'])
-        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("Model could not be trained due to missing columns in the dataset.")
 
 else:
     st.info("Please upload a CSV file from the sidebar to start the prediction.")
