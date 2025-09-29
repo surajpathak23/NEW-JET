@@ -16,17 +16,17 @@ st.set_page_config(
 @st.cache_data
 def load_data():
     try:
+        # Load the CSV file from the same directory as the script
         df = pd.read_csv('student_data.csv')
         return df
     except FileNotFoundError:
-        st.error("Error: 'student_data.csv' not found. Please create the file as instructed.")
+        st.error("Error: 'student_data.csv' not found. Please make sure the file is in the same folder as app.py.")
         return None
 
 df = load_data()
 
 if df is not None:
     # Preprocessing the data
-    # Select features (independent variables) and target (dependent variable)
     features = ['Course', 'Semester Avg CGPA', 'Study Hours']
     target = 'Final Marks'
 
