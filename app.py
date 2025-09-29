@@ -108,7 +108,7 @@ if df is not None:
     st.header("Predict a New Student's CGPA")
     if model:
         with st.form("prediction_form"):
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             with col1:
                 name = st.text_input("Student Name", placeholder="Enter student's full name")
                 roll_number = st.text_input("Roll Number", placeholder="Enter roll number")
@@ -122,7 +122,6 @@ if df is not None:
                     step=0.1, 
                     help="Average hours a student studies per day."
                 )
-            with col3:
                 previous_cgpa = st.slider(
                     "Previous Semester CGPA",
                     min_value=0.0,
