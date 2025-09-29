@@ -81,14 +81,8 @@ if df is not None:
     st.header("Top 10 Students (from Uploaded Data)")
 
     if 'Final CGPA' in df.columns:
-        top_students = df.sort_values(by='Final CGPA', ascending=False).head(10).reset_index(drop=True)
-        
-        # FIX: Round the numerical columns to 2 decimal places for cleaner display
-        top_students['Study Hours'] = top_students['Study Hours'].round(2)
-        top_students['Previous CGPA'] = top_students['Previous CGPA'].round(2)
-        top_students['Final CGPA'] = top_students['Final CGPA'].round(2)
-        
-        st.table(top_students)
+        top_students = df.sort_values(by='Final CGPA', ascending=False).head(10)
+        st.table(top_students.reset_index(drop=True))
     else:
         st.warning("Cannot display top students. 'Final CGPA' column is missing in the uploaded file.")
 
