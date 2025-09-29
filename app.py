@@ -50,6 +50,18 @@ if df is not None:
     # --- Streamlit Application Layout ---
     st.title("🎓 Student Mark Prediction Project")
     st.markdown("Enter student details to predict their marks and see the top performers.")
+
+    st.markdown("---")
+
+    # --- Top 10 Students Section ---
+    st.header("Top 10 Students (Based on Final Marks)")
+
+    # Sort the dataframe by 'Final Marks' in descending order and get the top 10
+    top_students = df.sort_values(by='Final Marks', ascending=False).head(10)
+
+    # Display the top students in a table
+    st.table(top_students[['Name', 'Roll Number', 'Course', 'Final Marks']].reset_index(drop=True))
+
     
     st.markdown("---")
 
@@ -86,14 +98,3 @@ if df is not None:
         prediction = model.predict(new_student_processed)[0]
 
         st.success(f"### Predicted Marks for {name}: **{prediction:.2f}**")
-
-    st.markdown("---")
-
-    # --- Top 10 Students Section ---
-    st.header("Top 10 Students (Based on Final Marks)")
-
-    # Sort the dataframe by 'Final Marks' in descending order and get the top 10
-    top_students = df.sort_values(by='Final Marks', ascending=False).head(10)
-
-    # Display the top students in a table
-    st.table(top_students[['Name', 'Roll Number', 'Course', 'Final Marks']].reset_index(drop=True))
