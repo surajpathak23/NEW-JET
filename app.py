@@ -9,7 +9,7 @@ import plotly.express as px
 
 # --- Page Configuration and CSS ---
 st.set_page_config(
-    page_title="Student CGPA Predictor",
+    page_title="Student Marks Predictor",
     page_icon="🎓",
     layout="wide"
 )
