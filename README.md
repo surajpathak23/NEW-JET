@@ -68,7 +68,9 @@ The Linear Regression model is trained on the uploaded dataset. Below are the ke
 
 | Dataset Overview & Top Students | Prediction Interface | Model Insights |
 | :---: | :---: | :---: |
-|  |  |  |
+| ![Dataset Overview & Top Students](https://github.com/surajpathak23/NEW-JET/blob/60734de117b62703cdb4f813fad4fd7a040530c1/Image/Dataset%20Overview%20%26%20Top%20Students.png?raw=true) | ![Prediction Interface](https://github.com/surajpathak23/NEW-JET/blob/60734de117b62703cdb4f813fad4fd7a040530c1/Image/Prediction%20Interface.png?raw=true) | ![Model Insights](https://github.com/surajpathak23/NEW-JET/blob/60734de117b62703cdb4f813fad4fd7a040530c1/Image/Model%20Insights.png?raw=true) |
+
+
 
 -----
 
